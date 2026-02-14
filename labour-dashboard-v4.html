@@ -1,0 +1,1585 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Labour Analytics Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --bg-primary: #0a0f1a;
+            --bg-card: #111827;
+            --bg-card-hover: #1a2236;
+            --bg-input: #0d1320;
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+            --accent-green: #10b981;
+            --accent-green-dim: rgba(16, 185, 129, 0.15);
+            --accent-green-glow: rgba(16, 185, 129, 0.3);
+            --accent-red: #ef4444;
+            --accent-red-dim: rgba(239, 68, 68, 0.15);
+            --accent-red-glow: rgba(239, 68, 68, 0.3);
+            --accent-blue: #3b82f6;
+            --accent-blue-dim: rgba(59, 130, 246, 0.15);
+            --accent-amber: #f59e0b;
+            --accent-amber-dim: rgba(245, 158, 11, 0.15);
+            --border-subtle: rgba(255, 255, 255, 0.08);
+            --border-active: rgba(255, 255, 255, 0.15);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            line-height: 1.5;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-image: 
+                linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+            background-size: 40px 40px;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .container {
+            max-width: 480px;
+            margin: 0 auto;
+            padding: 16px;
+            padding-bottom: 80px;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Header */
+        .header {
+            text-align: center;
+            padding: 20px 0 16px;
+        }
+
+        .header-label {
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            margin-bottom: 4px;
+        }
+
+        .header-title {
+            font-size: 22px;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        /* Navigation */
+        .nav-bar {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+
+        .nav-item {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .nav-label {
+            font-size: 10px;
+            font-weight: 600;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            padding-left: 4px;
+        }
+
+        .nav-select {
+            width: 100%;
+            padding: 12px 14px;
+            background: var(--bg-card);
+            border: 1px solid var(--border-subtle);
+            border-radius: 10px;
+            color: var(--text-primary);
+            font-family: 'DM Sans', sans-serif;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+            transition: all 0.2s ease;
+        }
+
+        .nav-select:hover { border-color: var(--border-active); }
+        .nav-select:focus {
+            outline: none;
+            border-color: var(--accent-blue);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+        }
+        .nav-select option { background: var(--bg-card); color: var(--text-primary); }
+
+        /* Summary Card */
+        .summary-card {
+            background: var(--bg-card);
+            border-radius: 20px;
+            padding: 24px 20px;
+            margin-bottom: 16px;
+            border: 1px solid var(--border-subtle);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .summary-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--indicator-color), transparent);
+            opacity: 0.8;
+        }
+
+        .summary-card:hover {
+            transform: translateY(-2px);
+            border-color: var(--border-active);
+        }
+
+        .summary-card.favorable { --indicator-color: var(--accent-green); }
+        .summary-card.unfavorable { --indicator-color: var(--accent-red); }
+
+        .summary-label {
+            font-size: 11px;
+            font-weight: 500;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 6px;
+        }
+
+        .summary-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            margin-bottom: 16px;
+        }
+
+        .summary-value {
+            font-family: 'Space Mono', monospace;
+            font-size: 32px;
+            font-weight: 700;
+            line-height: 1;
+        }
+
+        .summary-card.favorable .summary-value {
+            color: var(--accent-green);
+            text-shadow: 0 0 30px var(--accent-green-glow);
+        }
+
+        .summary-card.unfavorable .summary-value {
+            color: var(--accent-red);
+            text-shadow: 0 0 30px var(--accent-red-glow);
+        }
+
+        .summary-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 6px 10px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .summary-card.favorable .summary-badge {
+            background: var(--accent-green-dim);
+            color: var(--accent-green);
+        }
+
+        .summary-card.unfavorable .summary-badge {
+            background: var(--accent-red-dim);
+            color: var(--accent-red);
+        }
+
+        .summary-meta {
+            display: flex;
+            justify-content: space-between;
+            padding-top: 14px;
+            border-top: 1px solid var(--border-subtle);
+        }
+
+        .meta-item { text-align: center; }
+
+        .meta-label {
+            font-size: 9px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 2px;
+        }
+
+        .meta-value {
+            font-family: 'Space Mono', monospace;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-secondary);
+        }
+
+        .meta-value.positive { color: var(--accent-green); }
+        .meta-value.negative { color: var(--accent-red); }
+
+        .tap-hint {
+            text-align: center;
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-top: 12px;
+            opacity: 0.6;
+        }
+
+        /* Trend Section */
+        .trend-section {
+            display: none;
+            background: var(--bg-card);
+            border-radius: 16px;
+            padding: 16px;
+            margin-bottom: 16px;
+            border: 1px solid var(--border-subtle);
+            animation: slideDown 0.3s ease;
+        }
+
+        .trend-section.visible { display: block; }
+
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .section-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .chart-toggles {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+
+        .toggle-group {
+            display: flex;
+            gap: 4px;
+            background: var(--bg-primary);
+            padding: 3px;
+            border-radius: 6px;
+        }
+
+        .toggle-btn {
+            padding: 5px 10px;
+            border: none;
+            background: transparent;
+            color: var(--text-muted);
+            font-family: 'DM Sans', sans-serif;
+            font-size: 11px;
+            font-weight: 500;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .toggle-btn.active {
+            background: var(--bg-card-hover);
+            color: var(--text-primary);
+        }
+
+        .chart-container { height: 180px; }
+
+        .close-btn {
+            display: block;
+            width: 100%;
+            padding: 8px;
+            margin-top: 10px;
+            border: 1px solid var(--border-subtle);
+            background: transparent;
+            color: var(--text-secondary);
+            font-family: 'DM Sans', sans-serif;
+            font-size: 11px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .close-btn:hover {
+            background: var(--bg-card-hover);
+            color: var(--text-primary);
+        }
+
+        /* Commentary Card */
+        .commentary-card {
+            background: var(--bg-card);
+            border-radius: 14px;
+            padding: 16px;
+            margin-bottom: 16px;
+            border: 1px solid var(--border-subtle);
+            border-left: 3px solid var(--accent-blue);
+        }
+
+        .commentary-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+
+        .commentary-icon { font-size: 14px; }
+
+        .commentary-title {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .commentary-text {
+            font-size: 13px;
+            line-height: 1.6;
+            color: var(--text-secondary);
+        }
+
+        /* Driver Grid */
+        .drivers-label {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin: 20px 0 10px;
+        }
+
+        .driver-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+        }
+
+        /* Driver Card */
+        .driver-card {
+            background: var(--bg-card);
+            border-radius: 14px;
+            padding: 14px;
+            border: 1px solid var(--border-subtle);
+            cursor: pointer;
+            transition: all 0.25s ease;
+        }
+
+        .driver-card:hover { border-color: var(--border-active); }
+        .driver-card.expanded { grid-column: span 2; }
+
+        .driver-card.favorable { --card-color: var(--accent-green); }
+        .driver-card.unfavorable { --card-color: var(--accent-red); }
+        .driver-card.volume-card { --card-color: var(--accent-blue); }
+        .driver-card.volume-card.volume-down { --card-color: var(--accent-amber); }
+
+        .driver-header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 8px;
+        }
+
+        .driver-icon {
+            width: 28px;
+            height: 28px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 13px;
+            background: color-mix(in srgb, var(--card-color) 15%, transparent);
+            flex-shrink: 0;
+        }
+
+        .driver-info { flex: 1; min-width: 0; }
+
+        .driver-name {
+            font-size: 11px;
+            color: var(--text-secondary);
+            margin-bottom: 2px;
+        }
+
+        .driver-value-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+        }
+
+        .driver-value {
+            font-family: 'Space Mono', monospace;
+            font-size: 17px;
+            font-weight: 700;
+            color: var(--card-color);
+        }
+
+        .sparkline {
+            display: flex;
+            align-items: flex-end;
+            gap: 2px;
+            height: 20px;
+            padding: 2px 0;
+        }
+
+        .spark-bar {
+            width: 4px;
+            min-height: 2px;
+            border-radius: 1px;
+            transition: height 0.3s ease;
+        }
+
+        .spark-bar.positive { background: var(--accent-green); }
+        .spark-bar.negative { background: var(--accent-red); }
+        .spark-bar.volume-up { background: var(--accent-blue); }
+        .spark-bar.volume-down { background: var(--accent-amber); }
+
+        .expand-icon {
+            font-size: 10px;
+            color: var(--text-muted);
+            transition: transform 0.2s ease;
+        }
+
+        .driver-card.expanded .expand-icon { transform: rotate(180deg); }
+
+        .volume-card {
+            grid-column: span 2;
+            background: linear-gradient(135deg, var(--bg-card) 0%, color-mix(in srgb, var(--card-color) 5%, transparent) 100%);
+        }
+
+        .volume-subtitle {
+            font-size: 10px;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+
+        /* Expanded Detail Section */
+        .driver-detail {
+            display: none;
+            margin-top: 14px;
+            padding-top: 14px;
+            border-top: 1px solid var(--border-subtle);
+        }
+
+        .driver-card.expanded .driver-detail {
+            display: block;
+            animation: slideDown 0.25s ease;
+        }
+
+        .detail-list { margin-bottom: 14px; }
+
+        .detail-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid var(--border-subtle);
+        }
+
+        .detail-item:last-child { border-bottom: none; }
+
+        .detail-name {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .detail-value {
+            font-family: 'Space Mono', monospace;
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .detail-value.positive { color: var(--accent-green); }
+        .detail-value.negative { color: var(--accent-red); }
+        .detail-value.volume-up { color: var(--accent-blue); }
+        .detail-value.volume-down { color: var(--accent-amber); }
+
+        .detail-bar-container {
+            flex: 1;
+            max-width: 100px;
+            height: 6px;
+            background: var(--bg-primary);
+            border-radius: 3px;
+            margin: 0 12px;
+            overflow: hidden;
+        }
+
+        .detail-bar {
+            height: 100%;
+            border-radius: 3px;
+            transition: width 0.3s ease;
+        }
+
+        .detail-bar.positive { background: var(--accent-green); }
+        .detail-bar.negative { background: var(--accent-red); }
+        .detail-bar.volume-up { background: var(--accent-blue); }
+        .detail-bar.volume-down { background: var(--accent-amber); }
+
+        .detail-chart-section { margin-top: 12px; }
+        .detail-chart { height: 140px; }
+
+        /* Footer */
+        .footer {
+            text-align: center;
+            padding: 20px 0;
+            color: var(--text-muted);
+            font-size: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-label">Logistics Warehouse</div>
+            <h1 class="header-title">Labour Analytics</h1>
+        </header>
+
+        <!-- Navigation -->
+        <div class="nav-bar">
+            <div class="nav-item" style="flex: 1.2;">
+                <span class="nav-label">Period Range</span>
+                <select class="nav-select" id="periodSelect">
+                    <option value="ALL">YTD</option>
+                </select>
+            </div>
+            <div class="nav-item">
+                <span class="nav-label">Week</span>
+                <select class="nav-select" id="weekSelect">
+                    <option value="ALL">All Weeks</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Executive Summary Card -->
+        <div class="summary-card favorable" id="summaryCard">
+            <div class="summary-label">Flex Budget Variance</div>
+            <div class="summary-row">
+                <div class="summary-value" id="mainVariance">—</div>
+                <div class="summary-badge" id="statusBadge">
+                    <span>—</span>
+                </div>
+            </div>
+            <div class="summary-meta">
+                <div class="meta-item">
+                    <div class="meta-label">Flex Budget</div>
+                    <div class="meta-value" id="flexBudget">—</div>
+                </div>
+                <div class="meta-item">
+                    <div class="meta-label">Actual</div>
+                    <div class="meta-value" id="actualSpend">—</div>
+                </div>
+                <div class="meta-item">
+                    <div class="meta-label">Static Var</div>
+                    <div class="meta-value" id="staticVar">—</div>
+                </div>
+            </div>
+            <div class="tap-hint">Tap to see trend →</div>
+        </div>
+
+        <!-- Trend Section -->
+        <div class="trend-section" id="trendSection">
+            <div class="section-header">
+                <div class="section-title">Performance Trend</div>
+                <div class="chart-toggles">
+                    <div class="toggle-group" id="trendGroupingToggle">
+                        <button class="toggle-btn active" data-grouping="period">Period</button>
+                        <button class="toggle-btn" data-grouping="week">Week</button>
+                    </div>
+                    <div class="toggle-group" id="trendViewToggle">
+                        <button class="toggle-btn active" data-view="weekly">Values</button>
+                        <button class="toggle-btn" data-view="cumulative">Cumulative</button>
+                    </div>
+                </div>
+            </div>
+            <div class="chart-container">
+                <canvas id="trendChart"></canvas>
+            </div>
+            <button class="close-btn" id="closeTrend">Close</button>
+        </div>
+
+        <!-- Commentary -->
+        <div class="commentary-card">
+            <div class="commentary-header">
+                <span class="commentary-icon">📋</span>
+                <span class="commentary-title">Summary</span>
+            </div>
+            <p class="commentary-text" id="commentaryText">Loading...</p>
+        </div>
+
+        <!-- Variance Drivers -->
+        <div class="drivers-label">Variance Drivers</div>
+        <div class="driver-grid" id="driverGrid"></div>
+
+        <footer class="footer" id="footer">Loading data...</footer>
+    </div>
+
+    <script>
+        // ============================================
+        // DATA STRUCTURE (populated from CSV files)
+        // ============================================
+        
+        // Generate 53-week structure
+        const generateWeekStructure = () => {
+            const weeks = [];
+            const periods = [];
+            for (let p = 1; p <= 13; p++) {
+                const weeksInPeriod = (p === 13) ? 5 : 4;
+                for (let w = 1; w <= weeksInPeriod; w++) {
+                    weeks.push(`W${weeks.length + 1}`);
+                    periods.push(`P${String(p).padStart(2, '0')}`);
+                }
+            }
+            return { weeks, periods };
+        };
+        
+        const weekStructure = generateWeekStructure();
+        
+        const data = {
+            weeks: weekStructure.weeks,
+            periods: weekStructure.periods,
+            periodList: ['P01','P02','P03','P04','P05','P06','P07','P08','P09','P10','P11','P12','P13'],
+            
+            // Will be populated from CSV
+            summary: {
+                budget: new Array(53).fill(null),
+                actual: new Array(53).fill(null),
+                budgetVariance: new Array(53).fill(null),
+                volume: new Array(53).fill(null),
+                flexBudget: new Array(53).fill(null),
+                flexBudgetVar: new Array(53).fill(null),
+                productivity: new Array(53).fill(null),
+                indirect: new Array(53).fill(null),
+                holiday: new Array(53).fill(null),
+                absence: new Array(53).fill(null),
+                rate: new Array(53).fill(null)
+            },
+            
+            detail: {
+                volume: {},
+                productivity: {},
+                rate: {},
+                indirect: {},
+                holiday: {},
+                absence: {}
+            },
+            
+            // Commentary - will show based on data
+            commentary: {},
+            
+            // Driver config
+            drivers: [
+                { key: 'volume', name: 'Volume', icon: '📦', isVolume: true },
+                { key: 'indirect', name: 'Indirect', icon: '⚙️' },
+                { key: 'productivity', name: 'Productivity', icon: '⚡' },
+                { key: 'absence', name: 'Absence', icon: '👤' },
+                { key: 'holiday', name: 'Holiday', icon: '🌴' },
+                { key: 'rate', name: 'Rate', icon: '💷' }
+            ]
+        };
+
+        // ============================================
+        // CSV LOADING
+        // ============================================
+        
+        // Parse CSV text into rows
+        function parseCSV(text) {
+            const lines = text.trim().split(/\r?\n/);
+            return lines.map(line => {
+                const values = [];
+                let current = '';
+                let inQuotes = false;
+                
+                for (let i = 0; i < line.length; i++) {
+                    const char = line[i];
+                    if (char === '"') {
+                        inQuotes = !inQuotes;
+                    } else if (char === ',' && !inQuotes) {
+                        values.push(current.trim());
+                        current = '';
+                    } else {
+                        current += char;
+                    }
+                }
+                values.push(current.trim());
+                return values;
+            });
+        }
+        
+        // Parse a value that might have commas, parentheses for negatives
+        function parseValue(val) {
+            if (!val || val === '' || val === '-') return null;
+            
+            // Remove BOM if present
+            val = val.replace(/^\uFEFF/, '');
+            
+            // Check for parentheses (negative)
+            const isNegative = val.includes('(') && val.includes(')');
+            
+            // Remove parentheses, commas, currency symbols
+            let cleaned = val.replace(/[(),£$\s]/g, '');
+            
+            if (cleaned === '' || cleaned === '-') return null;
+            
+            const num = parseFloat(cleaned);
+            if (isNaN(num)) return null;
+            
+            return isNegative ? -num : num;
+        }
+        
+        // Load and parse the weekly summary CSV
+        async function loadWeeklyCSV() {
+            try {
+                const response = await fetch('Alpha_weekly.csv');
+                const text = await response.text();
+                const rows = parseCSV(text);
+                
+                // Row mapping (0-indexed)
+                const rowMap = {
+                    budget: 5,        // Row 6: Budget
+                    actual: 6,        // Row 7: Actual
+                    budgetVariance: 7, // Row 8: Bud Var
+                    volume: 9,        // Row 10: Volume
+                    flexBudget: 10,   // Row 11: Flex Bud
+                    flexBudgetVar: 12, // Row 13: Flex Bud VAR
+                    productivity: 14,  // Row 15: Prod
+                    indirect: 15,      // Row 16: Indirect
+                    holiday: 16,       // Row 17: Holiday
+                    absence: 17,       // Row 18: Absence
+                    rate: 18           // Row 19: Rate
+                };
+                
+                // Parse each metric (columns 3 onwards = week 1, 2, 3...)
+                Object.entries(rowMap).forEach(([metric, rowIdx]) => {
+                    if (rows[rowIdx]) {
+                        for (let col = 3; col < rows[rowIdx].length && col < 56; col++) {
+                            const weekIdx = col - 3;
+                            if (weekIdx < 53) {
+                                data.summary[metric][weekIdx] = parseValue(rows[rowIdx][col]);
+                            }
+                        }
+                    }
+                });
+                
+                return true;
+            } catch (err) {
+                console.error('Error loading weekly CSV:', err);
+                return false;
+            }
+        }
+        
+        // Load and parse the detail CSV
+        async function loadDetailCSV() {
+            try {
+                const response = await fetch('Alpha_detail.csv');
+                const text = await response.text();
+                const rows = parseCSV(text);
+                
+                // Category mapping
+                const categoryMap = {
+                    'Volume': 'volume',
+                    'Productivity': 'productivity',
+                    'Rate': 'rate',
+                    'Indirect': 'indirect',
+                    'Holiday': 'holiday',
+                    'Absence': 'absence'
+                };
+                
+                // Parse detail rows (starting from row 2, index 2)
+                for (let rowIdx = 2; rowIdx < rows.length; rowIdx++) {
+                    const row = rows[rowIdx];
+                    if (!row || row.length < 3) continue;
+                    
+                    const category = row[0];
+                    const subcategory = row[1];
+                    
+                    if (!category || !subcategory || !categoryMap[category]) continue;
+                    
+                    const dataKey = categoryMap[category];
+                    const values = new Array(53).fill(null);
+                    
+                    // Columns 2 onwards = week 1, 2, 3...
+                    for (let col = 2; col < row.length && col < 55; col++) {
+                        const weekIdx = col - 2;
+                        if (weekIdx < 53) {
+                            let val = parseValue(row[col]);
+                            // Invert volume signs to match summary (positive = more demand)
+                            if (dataKey === 'volume' && val !== null) {
+                                val = -val;
+                            }
+                            values[weekIdx] = val;
+                        }
+                    }
+                    
+                    data.detail[dataKey][subcategory] = values;
+                }
+                
+                return true;
+            } catch (err) {
+                console.error('Error loading detail CSV:', err);
+                return false;
+            }
+        }
+        
+        // Generate commentary based on loaded data
+        function generateCommentary() {
+            const weeksWithData = getWeeksWithData();
+            
+            // Helper to format £Xk consistently
+            const fmt = (val) => {
+                if (val === null || isNaN(val)) return '£0.0k';
+                const sign = val >= 0 ? '+' : '-';
+                return `${sign}£${(Math.abs(val)/1000).toFixed(1)}k`;
+            };
+            
+            // Generate weekly commentary
+            weeksWithData.forEach(idx => {
+                const week = data.weeks[idx];
+                const vol = data.summary.volume[idx] || 0;
+                const flex = data.summary.flexBudgetVar[idx] || 0;
+                const prod = data.summary.productivity[idx] || 0;
+                const indirect = data.summary.indirect[idx] || 0;
+                const holiday = data.summary.holiday[idx] || 0;
+                const absence = data.summary.absence[idx] || 0;
+                const rate = data.summary.rate[idx] || 0;
+                
+                // Find biggest volume driver
+                let volDrivers = [];
+                Object.entries(data.detail.volume || {}).forEach(([name, vals]) => {
+                    if (vals[idx] !== null && Math.abs(vals[idx]) > 500) {
+                        volDrivers.push({ name, val: vals[idx] });
+                    }
+                });
+                volDrivers.sort((a, b) => Math.abs(b.val) - Math.abs(a.val));
+                
+                let comment = `Volume ${vol >= 0 ? 'up' : 'down'} ${fmt(vol)}`;
+                if (volDrivers.length > 0) {
+                    comment += ` driven by Volume: ${volDrivers[0].name} (${fmt(volDrivers[0].val)})`;
+                    if (volDrivers.length > 1) {
+                        comment += `, Volume: ${volDrivers[1].name} (${fmt(volDrivers[1].val)})`;
+                    }
+                }
+                comment += `. `;
+                
+                // Add other drivers
+                if (Math.abs(prod) > 500) {
+                    comment += `Productivity: ${fmt(prod)}. `;
+                }
+                if (Math.abs(indirect) > 500) {
+                    comment += `Indirect: ${fmt(indirect)}. `;
+                }
+                if (Math.abs(rate) > 500) {
+                    comment += `Rate: ${fmt(rate)}. `;
+                }
+                if (Math.abs(holiday) > 500) {
+                    comment += `Holiday: ${fmt(holiday)}. `;
+                }
+                if (Math.abs(absence) > 500) {
+                    comment += `Absence: ${fmt(absence)}. `;
+                }
+                
+                comment += `Overall flex variance ${fmt(flex)}.`;
+                
+                data.commentary[week] = comment;
+            });
+            
+            // Generate YTD commentary
+            if (weeksWithData.length > 0) {
+                const ytdVol = weeksWithData.reduce((s, i) => s + (data.summary.volume[i] || 0), 0);
+                const ytdFlex = weeksWithData.reduce((s, i) => s + (data.summary.flexBudgetVar[i] || 0), 0);
+                const ytdProd = weeksWithData.reduce((s, i) => s + (data.summary.productivity[i] || 0), 0);
+                const ytdIndirect = weeksWithData.reduce((s, i) => s + (data.summary.indirect[i] || 0), 0);
+                
+                data.commentary['YTD'] = `Volume ${ytdVol >= 0 ? 'UP' : 'DOWN'} ${fmt(ytdVol)} YTD. ` +
+                    `Productivity: ${fmt(ytdProd)}. Indirect: ${fmt(ytdIndirect)}. ` +
+                    `Overall flex variance ${fmt(ytdFlex)}.`;
+            }
+            
+            // Generate period commentary
+            data.periodList.forEach(period => {
+                const periodWeeks = weeksWithData.filter(i => data.periods[i] === period);
+                if (periodWeeks.length === 0) return;
+                
+                const pVol = periodWeeks.reduce((s, i) => s + (data.summary.volume[i] || 0), 0);
+                const pFlex = periodWeeks.reduce((s, i) => s + (data.summary.flexBudgetVar[i] || 0), 0);
+                
+                data.commentary[period] = `${period}: Volume ${pVol >= 0 ? 'up' : 'down'} ${fmt(pVol)}. ` +
+                    `Flex variance ${fmt(pFlex)}.`;
+            });
+        }
+        
+        // Load all data
+        async function loadData() {
+            document.getElementById('commentaryText').textContent = 'Loading data...';
+            
+            const [weeklyOk, detailOk] = await Promise.all([
+                loadWeeklyCSV(),
+                loadDetailCSV()
+            ]);
+            
+            if (!weeklyOk || !detailOk) {
+                document.getElementById('commentaryText').textContent = 'Error loading data. Check CSV files are present.';
+                return false;
+            }
+            
+            generateCommentary();
+            return true;
+        }
+
+        // ============================================
+        // STATE
+        // ============================================
+        let currentPeriod = 'ALL';
+        let currentPeriodEnd = null;
+        let currentWeek = 'ALL';
+        let trendView = 'weekly';
+        let trendGrouping = 'period';
+        let expandedDriver = null;
+        let driverViews = {};
+        let driverGrouping = {};
+        let charts = {};
+
+        // ============================================
+        // UTILITIES
+        // ============================================
+        function formatCurrency(value, showSign = false) {
+            if (value === null || isNaN(value)) return '—';
+            const absValue = Math.abs(value);
+            let formatted = '£' + absValue.toLocaleString('en-GB', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+            if (showSign) {
+                return value >= 0 ? '+' + formatted : '-' + formatted;
+            }
+            return value < 0 ? '-' + formatted : formatted;
+        }
+
+        function sum(arr, indices = null) {
+            const targetIndices = indices || arr.map((_, i) => i);
+            return targetIndices.reduce((acc, i) => {
+                const val = arr[i];
+                return acc + (val !== null && !isNaN(val) ? val : 0);
+            }, 0);
+        }
+
+        function getCumulative(arr) {
+            let s = 0;
+            return arr.map(v => {
+                if (v !== null && !isNaN(v)) s += v;
+                return s;
+            });
+        }
+
+        function getWeeksWithData() {
+            return data.summary.budget
+                .map((v, i) => v !== null ? i : null)
+                .filter(i => i !== null);
+        }
+
+        function getLastWeekWithData() {
+            const indices = getWeeksWithData();
+            return indices.length > 0 ? indices[indices.length - 1] : -1;
+        }
+
+        function getWeekIndices() {
+            const lastWeekIdx = getLastWeekWithData();
+            let indices = [];
+            
+            if (currentWeek !== 'ALL') {
+                const weekNum = parseInt(currentWeek.replace('W', ''));
+                indices = [weekNum - 1];
+            } else if (currentPeriodEnd) {
+                const startPeriodNum = parseInt(currentPeriod.replace('P', ''));
+                const endPeriodNum = parseInt(currentPeriodEnd.replace('P', ''));
+                data.periods.forEach((p, i) => {
+                    const pNum = parseInt(p.replace('P', ''));
+                    if (pNum >= startPeriodNum && pNum <= endPeriodNum && i <= lastWeekIdx) {
+                        indices.push(i);
+                    }
+                });
+            } else if (currentPeriod !== 'ALL') {
+                data.periods.forEach((p, i) => {
+                    if (p === currentPeriod && i <= lastWeekIdx) {
+                        indices.push(i);
+                    }
+                });
+            } else {
+                indices = getWeeksWithData();
+            }
+            
+            return indices;
+        }
+
+        function getMetricValue(metric) {
+            const indices = getWeekIndices();
+            return sum(data.summary[metric], indices);
+        }
+
+        function getDetailValue(driver, subcat) {
+            const indices = getWeekIndices();
+            return sum(data.detail[driver][subcat], indices);
+        }
+
+        function getPeriodsWithData() {
+            const lastWeekIdx = getLastWeekWithData();
+            const periodsSet = new Set();
+            data.periods.forEach((p, i) => {
+                if (i <= lastWeekIdx) periodsSet.add(p);
+            });
+            return data.periodList.filter(p => periodsSet.has(p));
+        }
+
+        function aggregateByPeriod(weeklyData) {
+            const lastWeekIdx = getLastWeekWithData();
+            const periodTotals = {};
+            
+            data.periods.forEach((period, weekIdx) => {
+                if (weekIdx <= lastWeekIdx && weeklyData[weekIdx] !== null && !isNaN(weeklyData[weekIdx])) {
+                    if (!periodTotals[period]) periodTotals[period] = 0;
+                    periodTotals[period] += weeklyData[weekIdx];
+                }
+            });
+            
+            const periodsWithData = getPeriodsWithData();
+            return {
+                labels: periodsWithData,
+                values: periodsWithData.map(p => periodTotals[p] || 0)
+            };
+        }
+
+        function getWeeklyChartData(weeklyData) {
+            const weeksWithData = getWeeksWithData();
+            return {
+                labels: weeksWithData.map(i => data.weeks[i]),
+                values: weeksWithData.map(i => weeklyData[i] || 0)
+            };
+        }
+
+        // Get colors for volume (blue up, amber down)
+        function getVolumeColor(value, alpha = 0.7) {
+            if (value >= 0) {
+                return `rgba(59, 130, 246, ${alpha})`; // Blue
+            } else {
+                return `rgba(245, 158, 11, ${alpha})`; // Amber
+            }
+        }
+
+        // Get colors for standard metrics (green favorable, red unfavorable)
+        function getStandardColor(value, alpha = 0.7) {
+            if (value >= 0) {
+                return `rgba(16, 185, 129, ${alpha})`; // Green
+            } else {
+                return `rgba(239, 68, 68, ${alpha})`; // Red
+            }
+        }
+
+        // Generate sparkline HTML for a driver
+        // Shows trailing 6 weeks (or fewer if less data), ending at selected week
+        function generateSparkline(driverKey) {
+            const isVolume = driverKey === 'volume';
+            const weeksWithData = getWeeksWithData();
+            
+            if (weeksWithData.length === 0) return '';
+            
+            // Determine the "end" week for the sparkline
+            let endWeekIdx;
+            if (currentWeek !== 'ALL') {
+                // Specific week selected - end at that week
+                endWeekIdx = parseInt(currentWeek.replace('W', '')) - 1;
+            } else {
+                // YTD or period view - end at last week with data
+                endWeekIdx = getLastWeekWithData();
+            }
+            
+            // Get weeks to display: up to 6 weeks ending at endWeekIdx
+            const maxBars = 6;
+            const relevantWeeks = weeksWithData.filter(i => i <= endWeekIdx);
+            const displayWeeks = relevantWeeks.slice(-maxBars); // Last 6 (or fewer)
+            
+            if (displayWeeks.length === 0) return '';
+            
+            // Get weekly totals for this driver
+            const detailData = data.detail[driverKey];
+            const values = displayWeeks.map(i => {
+                return Object.values(detailData).reduce((sum, vals) => {
+                    const val = vals[i];
+                    return sum + (val !== null && !isNaN(val) ? val : 0);
+                }, 0);
+            });
+            
+            // Calculate max absolute value for scaling
+            const maxAbs = Math.max(...values.map(v => Math.abs(v)), 1);
+            
+            // Get currently selected week indices for highlighting
+            const selectedIndices = getWeekIndices();
+            const selectedSet = new Set(selectedIndices);
+            
+            // Generate bars
+            const bars = displayWeeks.map((weekIdx, i) => {
+                const v = values[i];
+                const heightPercent = Math.max((Math.abs(v) / maxAbs) * 100, 10); // Min 10% height
+                const isSelected = selectedSet.has(weekIdx);
+                const opacity = isSelected ? 1 : 0.3;
+                
+                let colorClass;
+                if (isVolume) {
+                    colorClass = v >= 0 ? 'volume-up' : 'volume-down';
+                } else {
+                    colorClass = v >= 0 ? 'positive' : 'negative';
+                }
+                return `<div class="spark-bar ${colorClass}" style="height: ${heightPercent}%; opacity: ${opacity}"></div>`;
+            }).join('');
+            
+            return `<div class="sparkline">${bars}</div>`;
+        }
+
+        // ============================================
+        // POPULATE NAVIGATION
+        // ============================================
+        function populateNav() {
+            const periodSelect = document.getElementById('periodSelect');
+            const periodsWithData = getPeriodsWithData();
+            
+            periodSelect.innerHTML = '<option value="ALL">YTD (All Periods)</option>';
+            
+            periodsWithData.forEach(p => {
+                periodSelect.innerHTML += `<option value="${p}">${p} Only</option>`;
+            });
+            
+            if (periodsWithData.length > 1) {
+                periodSelect.innerHTML += '<option disabled>──────────</option>';
+                for (let i = 1; i < periodsWithData.length; i++) {
+                    const startPeriod = periodsWithData[0];
+                    const endPeriod = periodsWithData[i];
+                    periodSelect.innerHTML += `<option value="${startPeriod}-${endPeriod}">${startPeriod} to ${endPeriod}</option>`;
+                }
+            }
+            
+            updateWeekOptions();
+        }
+
+        function updateWeekOptions() {
+            const weekSelect = document.getElementById('weekSelect');
+            const lastWeekIdx = getLastWeekWithData();
+            
+            weekSelect.innerHTML = '<option value="ALL">All Weeks</option>';
+            
+            let relevantWeeks = [];
+            
+            if (currentPeriodEnd) {
+                const startPeriodNum = parseInt(currentPeriod.replace('P', ''));
+                const endPeriodNum = parseInt(currentPeriodEnd.replace('P', ''));
+                data.weeks.forEach((w, i) => {
+                    const pNum = parseInt(data.periods[i].replace('P', ''));
+                    if (pNum >= startPeriodNum && pNum <= endPeriodNum && i <= lastWeekIdx) {
+                        relevantWeeks.push({ week: w, period: data.periods[i] });
+                    }
+                });
+            } else if (currentPeriod !== 'ALL') {
+                data.weeks.forEach((w, i) => {
+                    if (data.periods[i] === currentPeriod && i <= lastWeekIdx) {
+                        relevantWeeks.push({ week: w, period: data.periods[i] });
+                    }
+                });
+            } else {
+                data.weeks.forEach((w, i) => {
+                    if (i <= lastWeekIdx) {
+                        relevantWeeks.push({ week: w, period: data.periods[i] });
+                    }
+                });
+            }
+            
+            relevantWeeks.forEach(({ week, period }) => {
+                weekSelect.innerHTML += `<option value="${week}">${week} (${period})</option>`;
+            });
+        }
+
+        // ============================================
+        // UPDATE DISPLAY
+        // ============================================
+        function updateDisplay() {
+            const flexVar = getMetricValue('flexBudgetVar');
+            const staticVar = getMetricValue('budgetVariance');
+            const isFavorable = flexVar >= 0;
+            
+            const card = document.getElementById('summaryCard');
+            card.className = 'summary-card ' + (isFavorable ? 'favorable' : 'unfavorable');
+            
+            document.getElementById('mainVariance').textContent = formatCurrency(flexVar, true);
+            document.getElementById('statusBadge').innerHTML = isFavorable 
+                ? '<span>▲</span><span>FAVORABLE</span>' 
+                : '<span>▼</span><span>UNFAVORABLE</span>';
+            
+            document.getElementById('flexBudget').textContent = formatCurrency(getMetricValue('flexBudget'));
+            document.getElementById('actualSpend').textContent = formatCurrency(getMetricValue('actual'));
+            
+            const staticVarEl = document.getElementById('staticVar');
+            staticVarEl.textContent = formatCurrency(staticVar, true);
+            staticVarEl.className = 'meta-value ' + (staticVar >= 0 ? 'positive' : 'negative');
+            
+            let commentaryKey = 'YTD';
+            if (currentWeek !== 'ALL') {
+                commentaryKey = currentWeek;
+            } else if (currentPeriodEnd) {
+                commentaryKey = `${currentPeriod}-${currentPeriodEnd}`;
+                if (!data.commentary[commentaryKey]) commentaryKey = 'YTD';
+            } else if (currentPeriod !== 'ALL') {
+                commentaryKey = currentPeriod;
+            }
+            document.getElementById('commentaryText').textContent = data.commentary[commentaryKey] || data.commentary['YTD'];
+            
+            const lastWeekIdx = getLastWeekWithData();
+            const lastWeek = data.weeks[lastWeekIdx];
+            const lastPeriod = data.periods[lastWeekIdx];
+            document.getElementById('footer').textContent = `Data through ${lastWeek} · ${lastPeriod}`;
+            
+            renderDriverCards();
+        }
+
+        // ============================================
+        // RENDER DRIVER CARDS
+        // ============================================
+        function renderDriverCards() {
+            const grid = document.getElementById('driverGrid');
+            grid.innerHTML = '';
+            
+            data.drivers.forEach(driver => {
+                const value = getMetricValue(driver.key);
+                const isExpanded = expandedDriver === driver.key;
+                
+                // Determine card class
+                let cardClass = 'driver-card';
+                if (driver.isVolume) {
+                    cardClass += ' volume-card';
+                    if (value < 0) cardClass += ' volume-down';
+                } else {
+                    cardClass += value >= 0 ? ' favorable' : ' unfavorable';
+                }
+                if (isExpanded) cardClass += ' expanded';
+                
+                const card = document.createElement('div');
+                card.className = cardClass;
+                card.dataset.driver = driver.key;
+                
+                const detailData = data.detail[driver.key];
+                const hasMultipleDetails = detailData && Object.keys(detailData).length > 1;
+                
+                const volumeSubtitle = driver.isVolume 
+                    ? `<div class="volume-subtitle">${value >= 0 ? 'Higher demand than planned' : 'Lower demand than planned'}</div>` 
+                    : '';
+                
+                const sparkline = generateSparkline(driver.key);
+                
+                card.innerHTML = `
+                    <div class="driver-header">
+                        <div class="driver-icon">${driver.icon}</div>
+                        <div class="driver-info">
+                            <div class="driver-name">${driver.name}</div>
+                            <div class="driver-value-row">
+                                <div class="driver-value">${formatCurrency(value, true)}</div>
+                                ${sparkline}
+                            </div>
+                            ${volumeSubtitle}
+                        </div>
+                        <span class="expand-icon">▼</span>
+                    </div>
+                    <div class="driver-detail">
+                        ${hasMultipleDetails ? `<div class="detail-list" id="detail-${driver.key}"></div>` : ''}
+                        <div class="detail-chart-section">
+                            <div class="section-header">
+                                <div class="section-title">Trend</div>
+                                <div class="chart-toggles">
+                                    <div class="toggle-group">
+                                        <button class="toggle-btn ${(driverGrouping[driver.key] || 'period') === 'period' ? 'active' : ''}" data-driver="${driver.key}" data-grouping="period">Period</button>
+                                        <button class="toggle-btn ${driverGrouping[driver.key] === 'week' ? 'active' : ''}" data-driver="${driver.key}" data-grouping="week">Week</button>
+                                    </div>
+                                    <div class="toggle-group">
+                                        <button class="toggle-btn ${(driverViews[driver.key] || 'weekly') === 'weekly' ? 'active' : ''}" data-driver="${driver.key}" data-view="weekly">Values</button>
+                                        <button class="toggle-btn ${driverViews[driver.key] === 'cumulative' ? 'active' : ''}" data-driver="${driver.key}" data-view="cumulative">Cumulative</button>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="detail-chart">
+                                <canvas id="chart-${driver.key}"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                grid.appendChild(card);
+                
+                if (isExpanded) {
+                    if (hasMultipleDetails) populateDetailList(driver.key);
+                    createDetailChart(driver.key);
+                }
+            });
+            
+            attachDriverEvents();
+        }
+
+        function populateDetailList(driverKey) {
+            const list = document.getElementById(`detail-${driverKey}`);
+            if (!list) return;
+            
+            const detailData = data.detail[driverKey];
+            const entries = Object.entries(detailData);
+            const isVolume = driverKey === 'volume';
+            
+            const maxAbs = Math.max(...entries.map(([k]) => Math.abs(getDetailValue(driverKey, k))));
+            
+            list.innerHTML = entries.map(([name]) => {
+                const value = getDetailValue(driverKey, name);
+                const barWidth = maxAbs > 0 ? Math.abs(value) / maxAbs * 100 : 0;
+                
+                let colorClass;
+                if (isVolume) {
+                    colorClass = value >= 0 ? 'volume-up' : 'volume-down';
+                } else {
+                    colorClass = value >= 0 ? 'positive' : 'negative';
+                }
+                
+                return `
+                    <div class="detail-item">
+                        <span class="detail-name">${name}</span>
+                        <div class="detail-bar-container">
+                            <div class="detail-bar ${colorClass}" style="width: ${barWidth}%"></div>
+                        </div>
+                        <span class="detail-value ${colorClass}">${formatCurrency(value, true)}</span>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function createDetailChart(driverKey) {
+            const canvas = document.getElementById(`chart-${driverKey}`);
+            if (!canvas) return;
+            
+            const ctx = canvas.getContext('2d');
+            const detailData = data.detail[driverKey];
+            const view = driverViews[driverKey] || 'weekly';
+            const grouping = driverGrouping[driverKey] || 'period';
+            const isVolume = driverKey === 'volume';
+            
+            if (charts[driverKey]) charts[driverKey].destroy();
+            
+            // Calculate totals
+            const weeksWithData = getWeeksWithData();
+            const weeklyTotals = new Array(53).fill(null);
+            weeksWithData.forEach(i => {
+                weeklyTotals[i] = Object.values(detailData).reduce((sum, vals) => {
+                    const val = vals[i];
+                    return sum + (val !== null && !isNaN(val) ? val : 0);
+                }, 0);
+            });
+            
+            let chartInfo = grouping === 'period' ? aggregateByPeriod(weeklyTotals) : getWeeklyChartData(weeklyTotals);
+            const chartData = view === 'cumulative' ? getCumulative(chartInfo.values) : chartInfo.values;
+            
+            // Choose color function based on driver type
+            const colorFn = isVolume ? getVolumeColor : getStandardColor;
+            
+            charts[driverKey] = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: chartInfo.labels,
+                    datasets: [{
+                        data: chartData,
+                        backgroundColor: chartData.map(v => colorFn(v, 0.7)),
+                        borderRadius: 4
+                    }]
+                },
+                options: getChartOptions()
+            });
+        }
+
+        function getChartOptions() {
+            return {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        backgroundColor: '#1a2236',
+                        titleColor: '#f1f5f9',
+                        bodyColor: '#94a3b8',
+                        padding: 10,
+                        displayColors: false,
+                        callbacks: {
+                            label: (ctx) => formatCurrency(ctx.raw, true)
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        grid: { display: false },
+                        ticks: { color: '#64748b', font: { size: 10 } }
+                    },
+                    y: {
+                        grid: { color: 'rgba(255,255,255,0.05)' },
+                        ticks: {
+                            color: '#64748b',
+                            font: { size: 9 },
+                            callback: (v) => (v >= 0 ? '+' : '') + '£' + (v/1000).toFixed(1) + 'k'
+                        }
+                    }
+                }
+            };
+        }
+
+        function createTrendChart() {
+            const ctx = document.getElementById('trendChart').getContext('2d');
+            
+            if (charts.trend) charts.trend.destroy();
+            
+            let chartInfo = trendGrouping === 'period' 
+                ? aggregateByPeriod(data.summary.flexBudgetVar) 
+                : getWeeklyChartData(data.summary.flexBudgetVar);
+            
+            const chartData = trendView === 'cumulative' ? getCumulative(chartInfo.values) : chartInfo.values;
+            
+            charts.trend = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: chartInfo.labels,
+                    datasets: [{
+                        data: chartData,
+                        backgroundColor: chartData.map(v => getStandardColor(v, 0.7)),
+                        borderColor: chartData.map(v => v >= 0 ? '#10b981' : '#ef4444'),
+                        borderWidth: 2,
+                        borderRadius: 6
+                    }]
+                },
+                options: getChartOptions()
+            });
+        }
+
+        // ============================================
+        // EVENT HANDLERS
+        // ============================================
+        function attachDriverEvents() {
+            document.querySelectorAll('.driver-card').forEach(card => {
+                card.addEventListener('click', (e) => {
+                    if (e.target.classList.contains('toggle-btn')) return;
+                    
+                    const driver = card.dataset.driver;
+                    expandedDriver = expandedDriver === driver ? null : driver;
+                    renderDriverCards();
+                });
+            });
+            
+            document.querySelectorAll('.driver-detail .toggle-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const driver = btn.dataset.driver;
+                    
+                    if (btn.dataset.view) {
+                        driverViews[driver] = btn.dataset.view;
+                    } else if (btn.dataset.grouping) {
+                        driverGrouping[driver] = btn.dataset.grouping;
+                    }
+                    
+                    btn.parentElement.querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    
+                    createDetailChart(driver);
+                });
+            });
+        }
+
+        // Navigation events
+        document.getElementById('periodSelect').addEventListener('change', (e) => {
+            const value = e.target.value;
+            
+            if (value === 'ALL') {
+                currentPeriod = 'ALL';
+                currentPeriodEnd = null;
+            } else if (value.includes('-')) {
+                const parts = value.split('-');
+                currentPeriod = parts[0];
+                currentPeriodEnd = parts[1];
+            } else {
+                currentPeriod = value;
+                currentPeriodEnd = null;
+            }
+            
+            currentWeek = 'ALL';
+            updateWeekOptions();
+            updateDisplay();
+        });
+
+        document.getElementById('weekSelect').addEventListener('change', (e) => {
+            currentWeek = e.target.value;
+            updateDisplay();
+        });
+
+        // Summary card - show trend
+        document.getElementById('summaryCard').addEventListener('click', () => {
+            document.getElementById('trendSection').classList.add('visible');
+            createTrendChart();
+        });
+
+        document.getElementById('closeTrend').addEventListener('click', () => {
+            document.getElementById('trendSection').classList.remove('visible');
+        });
+
+        // Trend toggles
+        document.querySelectorAll('#trendGroupingToggle .toggle-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('#trendGroupingToggle .toggle-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                trendGrouping = btn.dataset.grouping;
+                createTrendChart();
+            });
+        });
+
+        document.querySelectorAll('#trendViewToggle .toggle-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('#trendViewToggle .toggle-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                trendView = btn.dataset.view;
+                createTrendChart();
+            });
+        });
+
+        // ============================================
+        // INITIALIZE
+        // ============================================
+        async function init() {
+            const loaded = await loadData();
+            if (loaded) {
+                populateNav();
+                updateDisplay();
+            }
+        }
+        
+        init();
+    </script>
+</body>
+</html>
