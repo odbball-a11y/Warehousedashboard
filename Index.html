@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="RunDash">
+<meta name="theme-color" content="#06061a">
+<title>Running Performance Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html{background:#06061a}
+body{font-family:'DM Sans',sans-serif;background:linear-gradient(180deg,#06061a,#0a0a1a);color:#f0f0f0;
+max-width:440px;margin:0 auto;min-height:100vh;min-height:100dvh;padding:0 16px 40px;
+-webkit-font-smoothing:antialiased;padding-top:env(safe-area-inset-top)}
+.mono{font-family:'JetBrains Mono',monospace}
+
+/* Header */
+.hdr{padding:24px 0 8px;display:flex;justify-content:space-between;align-items:center}
+.hdr-sub{font-size:10px;color:#555;text-transform:uppercase;letter-spacing:2px}
+.hdr-title{font-size:22px;font-weight:700;margin-top:4px;color:#e8dcc8}
+.toggle{display:flex;gap:4px;background:#111122;border-radius:8px;padding:3px}
+.toggle button{padding:6px 12px;border-radius:6px;border:none;cursor:pointer;background:transparent;
+color:#555;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1px;font-family:'DM Sans',sans-serif}
+.toggle button.active{background:#1a1a3e;color:#e8dcc8}
+
+/* Score ring */
+.hero{display:flex;flex-direction:column;align-items:center;padding:24px 0 16px}
+.ring-wrap{position:relative;width:160px;height:160px}
+.ring-wrap canvas{width:160px!important;height:160px!important}
+.ring-label{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center}
+.ring-num{font-size:42px;font-weight:700;color:#f0f0f0}
+.ring-sub{font-size:11px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-top:-4px}
+.status-row{margin-top:12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:center}
+.badge{padding:4px 12px;border-radius:20px;font-size:12px;font-weight:600}
+.badge-green{background:rgba(34,197,94,.15);color:#22c55e}
+.badge-amber{background:rgba(245,158,11,.15);color:#f59e0b}
+.badge-red{background:rgba(239,68,68,.15);color:#ef4444}
+.delta{font-size:12px;font-weight:600}
+.delta-up{color:#22c55e}
+.delta-down{color:#ef4444}
+
+/* AI Summary */
+.ai-box{background:linear-gradient(135deg,#0d0d2a,#111128);border-radius:16px;padding:18px 20px;
+margin-bottom:20px;border-left:3px solid #e8dcc8}
+.ai-label{font-size:10px;color:#e8dcc8;text-transform:uppercase;letter-spacing:2px;margin-bottom:8px}
+.ai-text{font-size:13.5px;line-height:1.65;color:#bbb}
+
+/* Pill row */
+.pills{display:flex;gap:8px;margin-bottom:8px}
+.pill{background:#111122;border-radius:12px;padding:10px 14px;flex:1;min-width:0}
+.pill-label{font-size:10px;color:#666;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:4px}
+.pill-val{font-size:20px;font-weight:700}
+.pill-sub{font-size:10px;color:#555;margin-top:2px}
+
+/* Micro indicators */
+.micros{display:flex;justify-content:space-around;margin:16px 0 24px;padding:12px 0;
+background:#0a0a18;border-radius:12px;border:1px solid #111}
+.micro{text-align:center}
+.micro-icon{font-size:20px}
+.micro-label{font-size:9px;color:#555;text-transform:uppercase;letter-spacing:1px;margin-top:2px}
+.micro-val{font-size:11px;font-weight:600;margin-top:2px}
+
+/* Collapsible sections */
+.section{margin-bottom:16px}
+.section-btn{width:100%;display:flex;justify-content:space-between;align-items:center;
+background:#0d0d1a;border:1px solid #1a1a2e;border-radius:12px;padding:14px 16px;
+color:#ccc;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600}
+.section-arrow{color:#555;font-size:18px;transition:transform .2s}
+.section-arrow.open{transform:rotate(180deg)}
+.section-body{margin-top:8px;background:#0a0a18;border-radius:12px;padding:16px;border:1px solid #111;
+display:none;overflow:hidden}
+.section-body.open{display:block}
+.chart-wrap{position:relative;width:100%;height:200px}
+.chart-wrap canvas{width:100%!important}
+
+/* Segments */
+.seg-row{display:flex;align-items:center;padding:12px 0;border-bottom:1px solid #111}
+.seg-row:last-child{border-bottom:none}
+.seg-name{width:60px;font-weight:700;color:#e8dcc8;font-size:13px}
+.seg-mid{flex:1}
+.seg-time{font-size:22px;font-weight:700;color:#f0f0f0}
+.seg-pace{font-size:10px;color:#666;margin-top:2px}
+.seg-right{text-align:right}
+.seg-date{font-size:11px;color:#888}
+.seg-source{font-size:10px;color:#555}
+
+/* Chart legend */
+.legend{display:flex;justify-content:center;gap:16px;margin-top:8px}
+.legend-item{display:flex;align-items:center;gap:4px}
+.legend-dot{width:8px;height:8px;border-radius:4px}
+.legend-text{font-size:10px;color:#666}
+
+/* Footer */
+.footer{margin-top:24px;padding:16px 20px;background:#0a0a18;border-radius:12px;border:1px solid #111;
+display:flex;justify-content:space-between}
+.footer-label{font-size:10px;color:#555;text-transform:uppercase;letter-spacing:1px}
+.footer-val{font-size:18px;font-weight:700;color:#e8dcc8}
+.footer-small{font-size:13px;color:#888;margin-top:4px}
+.foot-note{text-align:center;margin-top:20px;font-size:10px;color:#333}
+.chart-note{font-size:11px;color:#666;margin-bottom:8px}
+</style>
+</head>
+<body>
+<!-- Header -->
+<div class="hdr">
+  <div>
+    <div class="hdr-sub">runalyze · performance</div>
+    <div class="hdr-title">Your Dashboard</div>
+  </div>
+  <div class="toggle">
+    <button class="active" id="btn-daily" onclick="setView('daily')">Daily</button>
+    <button id="btn-weekly" onclick="setView('weekly')">Weekly</button>
+  </div>
+</div>
+
+<!-- Hero Score -->
+<div class="hero">
+  <div class="ring-wrap">
+    <canvas id="ringChart" width="160" height="160"></canvas>
+    <div class="ring-label">
+      <div class="ring-num mono" id="scoreNum">72</div>
+      <div class="ring-sub">fitness score</div>
+    </div>
+  </div>
+  <div class="status-row">
+    <span class="badge badge-green" id="statusBadge">Productive Training</span>
+    <span class="delta delta-up mono" id="deltaText">↑ 1.2 vs last week</span>
+  </div>
+</div>
+
+<!-- AI Summary -->
+<div class="ai-box">
+  <div class="ai-label" id="aiLabel">Today's Read</div>
+  <div class="ai-text" id="aiText"></div>
+</div>
+
+<!-- Quick Stats Row 1 -->
+<div class="pills">
+  <div class="pill"><div class="pill-label">Fitness</div><div class="pill-val mono" style="color:#3b82f6">31.2</div><div class="pill-sub">CTL (42d)</div></div>
+  <div class="pill"><div class="pill-label">Fatigue</div><div class="pill-val mono" style="color:#f59e0b">39.4</div><div class="pill-sub">ATL (7d)</div></div>
+  <div class="pill"><div class="pill-label">Form</div><div class="pill-val mono" style="color:#ef4444">-8.1</div><div class="pill-sub">TSB</div></div>
+</div>
+<!-- Quick Stats Row 2 -->
+<div class="pills" style="margin-bottom:0">
+  <div class="pill"><div class="pill-label">ACWR</div><div class="pill-val mono" style="color:#22c55e">0.92</div><div class="pill-sub">0.8–1.3 optimal</div></div>
+  <div class="pill"><div class="pill-label">VO₂max</div><div class="pill-val mono" style="color:#a78bfa">40.1</div><div class="pill-sub">5-run avg</div></div>
+  <div class="pill"><div class="pill-label">RHR</div><div class="pill-val mono" style="color:#6ee7b7">42</div><div class="pill-sub">bpm today</div></div>
+</div>
+
+<!-- Micro Indicators -->
+<div class="micros">
+  <div class="micro"><div class="micro-icon">❤️</div><div class="micro-label">HR Drift</div><div class="micro-val" style="color:#22c55e">Stable</div></div>
+  <div class="micro"><div class="micro-icon">⚡</div><div class="micro-label">Fatigue</div><div class="micro-val" style="color:#f59e0b">Elevated</div></div>
+  <div class="micro"><div class="micro-icon">🔁</div><div class="micro-label">Monotony</div><div class="micro-val" style="color:#22c55e">Low</div></div>
+  <div class="micro"><div class="micro-icon">🧠</div><div class="micro-label">Ready</div><div class="micro-val" style="color:#22c55e">Good</div></div>
+</div>
+
+<!-- Chart: Fitness vs Fatigue -->
+<div class="section">
+  <button class="section-btn" onclick="toggleSection(this)">
+    <span>📈  Fitness vs Fatigue</span><span class="section-arrow open">▾</span>
+  </button>
+  <div class="section-body open">
+    <div class="chart-wrap"><canvas id="fitFatChart"></canvas></div>
+    <div class="legend">
+      <div class="legend-item"><div class="legend-dot" style="background:#3b82f6"></div><span class="legend-text">Fitness</span></div>
+      <div class="legend-item"><div class="legend-dot" style="background:#f59e0b"></div><span class="legend-text">Fatigue</span></div>
+      <div class="legend-item"><div class="legend-dot" style="background:#22c55e"></div><span class="legend-text">Form</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- Chart: Efficiency -->
+<div class="section">
+  <button class="section-btn" onclick="toggleSection(this)">
+    <span>📉  Aerobic Efficiency Trend</span><span class="section-arrow">▾</span>
+  </button>
+  <div class="section-body">
+    <div class="chart-note">Speed (m/s) ÷ Avg HR — higher = fitter</div>
+    <div class="chart-wrap"><canvas id="effChart"></canvas></div>
+  </div>
+</div>
+
+<!-- Chart: Weekly Load -->
+<div class="section">
+  <button class="section-btn" onclick="toggleSection(this)">
+    <span>📊  Weekly Training Load</span><span class="section-arrow">▾</span>
+  </button>
+  <div class="section-body">
+    <div class="chart-wrap"><canvas id="loadChart"></canvas></div>
+  </div>
+</div>
+
+<!-- Chart: VO2max -->
+<div class="section">
+  <button class="section-btn" onclick="toggleSection(this)">
+    <span>🫁  VO₂max Trend</span><span class="section-arrow">▾</span>
+  </button>
+  <div class="section-body">
+    <div class="chart-wrap"><canvas id="vo2Chart"></canvas></div>
+  </div>
+</div>
+
+<!-- Best Segments -->
+<div class="section">
+  <button class="section-btn" onclick="toggleSection(this)">
+    <span>🏆  Best Segment Times</span><span class="section-arrow open">▾</span>
+  </button>
+  <div class="section-body open" id="segmentsBody"></div>
+</div>
+
+<!-- Footer -->
+<div class="footer">
+  <div><div class="footer-label">Total Runs</div><div class="footer-val mono">337</div></div>
+  <div style="text-align:right"><div class="footer-label">Data Range</div><div class="footer-small">Sep 2023 – Feb 2026</div></div>
+</div>
+<div class="foot-note">powered by runalyze · built with claude</div>
+
+<script>
+// ─── DATA ───
+const D = {
+  fitnessScore: 72, status: "Productive Training", fitnessDelta: 1.2,
+  currentForm: -8.1, currentACWR: 0.92, recentVO2: 40.1, rhrRecent: 42,
+  fitnessData: [
+    {d:"11/14",fit:17.5,fat:15.5,form:2},{d:"11/21",fit:21.7,fat:31.9,form:-10.2},{d:"11/27",fit:21.3,fat:26,form:-4.7},
+    {d:"11/29",fit:23.1,fat:34.4,form:-11.3},{d:"12/06",fit:20.6,fat:26.3,form:-5.8},{d:"12/13",fit:18.4,fat:23,form:-4.6},
+    {d:"12/20",fit:16,fat:18.3,form:-2.3},{d:"12/26",fit:15.2,fat:20.5,form:-5.3},{d:"12/29",fit:17.1,fat:29.7,form:-12.5},
+    {d:"01/01",fit:16.8,fat:23,form:-6.2},{d:"01/03",fit:18.5,fat:30.2,form:-11.7},{d:"01/04",fit:21.3,fat:42.6,form:-21.3},
+    {d:"01/10",fit:19.5,fat:26.1,form:-6.6},{d:"01/11",fit:21.7,fat:36.3,form:-14.6},{d:"01/16",fit:21.4,fat:31.6,form:-10.3},
+    {d:"01/17",fit:24.3,fat:44.7,form:-20.4},{d:"01/18",fit:26.3,fat:50.5,form:-24.2},{d:"01/21",fit:26.7,fat:42.3,form:-15.6},
+    {d:"01/24",fit:26.7,fat:37.1,form:-10.4},{d:"01/26",fit:27.8,fat:38.9,form:-11.1},{d:"01/28",fit:27.9,fat:35.9,form:-8},
+    {d:"01/30",fit:27,fat:28.9,form:-2},{d:"02/01",fit:29.1,fat:41,form:-11.9},{d:"02/03",fit:28,fat:31.3,form:-3.3},
+    {d:"02/04",fit:30,fat:41.5,form:-11.4},{d:"02/07",fit:29.3,fat:35.3,form:-5.9},{d:"02/08",fit:31.1,fat:43.4,form:-12.3},
+    {d:"02/10",fit:29.9,fat:33.2,form:-3.2},{d:"02/11",fit:31.2,fat:39.4,form:-8.1}
+  ],
+  effData: [
+    {d:"09/02",v:19.3,p:"5:49",hr:157},{d:"09/08",v:19.2,p:"5:82",hr:149},{d:"09/23",v:17.5,p:"5:95",hr:160},
+    {d:"09/25",v:17.2,p:"5:83",hr:166},{d:"09/28",v:17.9,p:"5:93",hr:157},{d:"10/02",v:17.4,p:"5:99",hr:160},
+    {d:"10/07",v:17.5,p:"6:18",hr:154},{d:"10/11",v:17.0,p:"6:08",hr:161},{d:"10/15",v:17.5,p:"6:44",hr:148},
+    {d:"10/19",v:17.1,p:"6:42",hr:152},{d:"11/08",v:14.6,p:"6:83",hr:167},{d:"11/15",v:16.9,p:"6:17",hr:160},
+    {d:"11/21",v:15.6,p:"6:52",hr:164},{d:"11/27",v:16.8,p:"6:56",hr:151},{d:"12/06",v:16.0,p:"6:42",hr:162},
+    {d:"12/13",v:16.2,p:"6:51",hr:158},{d:"12/20",v:16.5,p:"6:69",hr:151},{d:"12/29",v:15.7,p:"6:58",hr:161},
+    {d:"01/03",v:17.5,p:"6:28",hr:152},{d:"01/11",v:18.1,p:"5:98",hr:154},{d:"01/17",v:17.0,p:"6:02",hr:163},
+    {d:"01/24",v:16.2,p:"6:55",hr:157},{d:"01/28",v:17.5,p:"6:61",hr:144},{d:"02/01",v:16.6,p:"6:81",hr:147},
+    {d:"02/04",v:16.2,p:"7:05",hr:146},{d:"02/07",v:16.8,p:"6:82",hr:145},{d:"02/08",v:18.2,p:"6:57",hr:139},
+    {d:"02/10",v:19.3,p:"6:36",hr:136},{d:"02/11",v:18.4,p:"6:77",hr:134}
+  ],
+  vo2Data: [
+    {d:"09/02",v:43.6},{d:"09/08",v:43.7},{d:"09/23",v:38.3},{d:"09/28",v:39.6},{d:"10/02",v:38},
+    {d:"10/11",v:37},{d:"10/19",v:37.6},{d:"11/08",v:30.1},{d:"11/15",v:36.6},{d:"11/21",v:32.9},
+    {d:"11/29",v:36.4},{d:"12/06",v:34.2},{d:"12/20",v:36.1},{d:"12/29",v:33.5},{d:"01/03",v:38.7},
+    {d:"01/11",v:40.3},{d:"01/17",v:36.7},{d:"01/24",v:35},{d:"01/28",v:39.2},{d:"02/01",v:36.7},
+    {d:"02/04",v:35.5},{d:"02/07",v:37.3},{d:"02/08",v:41.4},{d:"02/10",v:44.4},{d:"02/11",v:41.9}
+  ],
+  weeklyLoad: [
+    {w:"Nov 24",l:144},{w:"Dec 01",l:87},{w:"Dec 08",l:78},{w:"Dec 15",l:61},{w:"Dec 22",l:69},
+    {w:"Jan 01",l:191},{w:"Jan 05",l:141},{w:"Jan 12",l:244},{w:"Jan 19",l:173},{w:"Jan 26",l:253},
+    {w:"Feb 02",l:244},{w:"Feb 09",l:93}
+  ],
+  bestSegments: [
+    {name:"1km", time:"5:00", date:"2024-01-26", dist:1.6, title:"Benchmark Run", pace:"5:00/km"},
+    {name:"1 mile", time:"7:12", date:"2024-05-04", dist:5.0, title:"5K Race", pace:"4:28/km"},
+    {name:"3km", time:"14:57", date:"2024-05-17", dist:4.6, title:"Tempo Run", pace:"4:59/km"},
+    {name:"5km", time:"22:41", date:"2024-05-04", dist:5.0, title:"5K Race", pace:"4:32/km"},
+    {name:"10km", time:"55:42", date:"2024-05-19", dist:10.1, title:"10K Run", pace:"5:34/km"}
+  ]
+};
+
+// ─── AI SUMMARIES ───
+const aiTexts = {
+  daily: `Training load is productively elevated with an ACWR of ${D.currentACWR}, sitting in the optimal range. Your last run showed good efficiency at a controlled heart rate of 134 bpm — your lowest recent average. Today suits an easy run or light speed work — avoid anything maximal.`,
+  weekly: `Fitness improved by ${D.fitnessDelta} points this week — the training block is working. Weekly load was 93 TRIMP, down from 244 last week. Aerobic efficiency has been trending upward over the past fortnight, with heart rate at similar paces dropping by 3–5 bpm. Maintain current volume but consider one lighter day mid-week to manage monotony and keep the ACWR in range.`
+};
+
+let currentView = 'daily';
+function setView(v) {
+  currentView = v;
+  document.getElementById('btn-daily').className = v === 'daily' ? 'active' : '';
+  document.getElementById('btn-weekly').className = v === 'weekly' ? 'active' : '';
+  document.getElementById('aiLabel').textContent = v === 'daily' ? "Today's Read" : "This Week";
+  document.getElementById('aiText').textContent = aiTexts[v];
+}
+
+// ─── TOGGLE SECTIONS ───
+function toggleSection(btn) {
+  const body = btn.nextElementSibling;
+  const arrow = btn.querySelector('.section-arrow');
+  body.classList.toggle('open');
+  arrow.classList.toggle('open');
+}
+
+// ─── CHART DEFAULTS ───
+Chart.defaults.color = '#444';
+Chart.defaults.borderColor = '#111';
+Chart.defaults.font.family = "'DM Sans', sans-serif";
+Chart.defaults.font.size = 10;
+Chart.defaults.plugins.legend.display = false;
+Chart.defaults.plugins.tooltip.backgroundColor = '#111122';
+Chart.defaults.plugins.tooltip.borderColor = '#222';
+Chart.defaults.plugins.tooltip.borderWidth = 1;
+Chart.defaults.plugins.tooltip.cornerRadius = 8;
+Chart.defaults.plugins.tooltip.padding = 10;
+Chart.defaults.plugins.tooltip.titleFont = { family: "'DM Sans', sans-serif", size: 11 };
+Chart.defaults.plugins.tooltip.bodyFont = { family: "'JetBrains Mono', monospace", size: 11 };
+
+// ─── SCORE RING ───
+new Chart(document.getElementById('ringChart'), {
+  type: 'doughnut',
+  data: {
+    datasets: [{
+      data: [D.fitnessScore, 100 - D.fitnessScore],
+      backgroundColor: ['#22c55e', '#1a1a2e'],
+      borderWidth: 0, borderRadius: 6
+    }]
+  },
+  options: { cutout: '78%', responsive: false, plugins: { tooltip: { enabled: false } } }
+});
+
+// ─── FITNESS vs FATIGUE ───
+new Chart(document.getElementById('fitFatChart'), {
+  type: 'line',
+  data: {
+    labels: D.fitnessData.map(d => d.d),
+    datasets: [
+      { label: 'Fitness', data: D.fitnessData.map(d => d.fit), borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,.1)', fill: true, tension: .3, pointRadius: 0, borderWidth: 2 },
+      { label: 'Fatigue', data: D.fitnessData.map(d => d.fat), borderColor: '#f59e0b', backgroundColor: 'rgba(245,158,11,.05)', fill: true, tension: .3, pointRadius: 0, borderWidth: 2 },
+      { label: 'Form', data: D.fitnessData.map(d => d.form), borderColor: '#22c55e', borderDash: [4,4], tension: .3, pointRadius: 0, borderWidth: 1.5, fill: false }
+    ]
+  },
+  options: { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false },
+    scales: { x: { grid: { color: '#111' }, ticks: { maxTicksLimit: 8 } }, y: { grid: { color: '#111' } } } }
+});
+
+// ─── EFFICIENCY ───
+new Chart(document.getElementById('effChart'), {
+  type: 'line',
+  data: {
+    labels: D.effData.map(d => d.d),
+    datasets: [{
+      label: 'Efficiency (×1000)', data: D.effData.map(d => d.v),
+      borderColor: '#a78bfa', backgroundColor: 'rgba(167,139,250,.1)', fill: true,
+      tension: .3, pointRadius: 3, pointBackgroundColor: '#a78bfa', borderWidth: 2
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false },
+    scales: { x: { grid: { color: '#111' }, ticks: { maxTicksLimit: 8 } }, y: { grid: { color: '#111' }, min: 13, max: 21 } },
+    plugins: { tooltip: { callbacks: {
+      label: ctx => {
+        const d = D.effData[ctx.dataIndex];
+        return [`Eff: ${d.v.toFixed(1)}`, `Pace: ${d.p} min/km`, `HR: ${d.hr} bpm`];
+      }
+    }}}
+  }
+});
+
+// ─── WEEKLY LOAD ───
+new Chart(document.getElementById('loadChart'), {
+  type: 'bar',
+  data: {
+    labels: D.weeklyLoad.map(d => d.w),
+    datasets: [{
+      label: 'TRIMP', data: D.weeklyLoad.map(d => d.l),
+      backgroundColor: '#3b82f6', borderRadius: 4, maxBarThickness: 28
+    }]
+  },
+  options: { responsive: true, maintainAspectRatio: false,
+    scales: { x: { grid: { display: false }, ticks: { maxTicksLimit: 8 } }, y: { grid: { color: '#111' } } } }
+});
+
+// ─── VO2MAX ───
+new Chart(document.getElementById('vo2Chart'), {
+  type: 'line',
+  data: {
+    labels: D.vo2Data.map(d => d.d),
+    datasets: [{
+      label: 'VO₂max', data: D.vo2Data.map(d => d.v),
+      borderColor: '#6ee7b7', backgroundColor: 'rgba(110,231,183,.08)', fill: true,
+      tension: .3, pointRadius: 2.5, pointBackgroundColor: '#6ee7b7', borderWidth: 2
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false },
+    scales: { x: { grid: { color: '#111' }, ticks: { maxTicksLimit: 8 } }, y: { grid: { color: '#111' }, min: 28, max: 48 } },
+    plugins: {
+      annotation: { annotations: { line1: { type: 'line', yMin: 40, yMax: 40, borderColor: '#333', borderDash: [4,4], borderWidth: 1 } } }
+    }
+  }
+});
+
+// ─── SEGMENTS ───
+const segBody = document.getElementById('segmentsBody');
+segBody.innerHTML = `<div class="chart-note">Extracted from all 337 runs · Finds your fastest splits within any activity</div>` +
+  D.bestSegments.map(s => `
+    <div class="seg-row">
+      <div class="seg-name mono">${s.name}</div>
+      <div class="seg-mid">
+        <div class="seg-time mono">${s.time}</div>
+        <div class="seg-pace">${s.pace}</div>
+      </div>
+      <div class="seg-right">
+        <div class="seg-date">${s.date}</div>
+        <div class="seg-source">in ${s.dist}km ${s.title}</div>
+      </div>
+    </div>
+  `).join('') +
+  `<div style="margin-top:12px;font-size:10px;color:#444;font-style:italic">Times found by scanning split data across your entire history — your best 5km may have been buried inside a longer run.</div>`;
+
+// Init
+setView('daily');
+</script>
+</body>
+</html>
